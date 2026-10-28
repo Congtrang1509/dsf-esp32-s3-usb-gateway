@@ -524,10 +524,11 @@ cdc_acm_dev_hdl_t open_usb_serial(uint16_t vid, uint16_t pid) {
 }
 
 void usb_host_task(void *main_task) {
-  const usb_host_config_t host_config = {
-      .skip_phy_setup = false,
-      .intr_flags = ESP_INTR_FLAG_LOWMED,
-  };
+  // ESP-IDF 6 adds fields to usb_host_config_t. Zero-initialize the whole
+  // structure first so -Wmissing-field-initializers does not fail the build.
+  usb_host_config_t host_config{};
+  host_config.skip_phy_setup = false;
+  host_config.intr_flags = ESP_INTR_FLAG_LOWMED;
   ESP_ERROR_CHECK(usb_host_install(&host_config));
 
   const cdc_acm_host_driver_config_t driver_config = {
@@ -620,7 +621,10 @@ void init_ble() {
       NUS_TX_UUID, NIMBLE_PROPERTY::NOTIFY | NIMBLE_PROPERTY::READ);
   service->createCharacteristic(
       NUS_RX_UUID, NIMBLE_PROPERTY::WRITE | NIMBLE_PROPERTY::WRITE_NR);
-  service->start();
+  if (!server->start()) {
+    ESP_LOGE(TAG, "Khong khoi dong duoc BLE GATT server");
+    return;
+  }
 
   NimBLEAdvertising *advertising = NimBLEDevice::getAdvertising();
   advertising->addServiceUUID(NUS_SERVICE_UUID);
